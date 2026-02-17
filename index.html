@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Focus | Mastery Training</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --accent-blue: #0071e3;
+            --accent-red: #ff3b30;
+            --accent-green: #34c759;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --radius-lg: 24px;
+            --radius-md: 12px;
+            --transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            touch-action: manipulation;
+        }
+
+        /* --- Header --- */
+        header {
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(245, 245, 247, 0.8);
+            backdrop-filter: blur(20px);
+            z-index: 10;
+        }
+
+        .batch-indicator {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .nav-pills {
+            display: flex;
+            background: rgba(118, 118, 128, 0.12);
+            padding: 3px;
+            border-radius: var(--radius-lg);
+            gap: 2px;
+        }
+
+        .nav-item {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: default; 
+            color: var(--text-secondary);
+            transition: var(--transition);
+        }
+
+        .nav-item.active {
+            background: #fff;
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* --- Main --- */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .instruction-text {
+            margin-bottom: 24px;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            max-width: 600px;
+            animation: fadeIn 0.6s forwards;
+            line-height: 1.3;
+        }
+
+        .sub-text {
+            display: block;
+            font-size: 15px;
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-top: 8px;
+        }
+
+        /* --- Phase 1: Grid --- */
+        .exposure-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            width: 100%;
+            max-width: 600px;
+            display: none;
+            overflow-y: auto;
+            max-height: 60vh;
+            padding: 4px;
+        }
+
+        .exposure-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            text-align: center;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+        }
+
+        .exp-term { font-size: 22px; font-weight: 700; display: block; margin-bottom: 4px; }
+        .exp-def { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+
+        /* --- Phase 2/3: Flashcards --- */
+        .card-container {
+            width: 100%;
+            max-width: 340px;
+            height: 440px;
+            perspective: 1000px;
+            position: relative;
+            display: none;
+        }
+
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.3s;
+            box-shadow: var(--shadow-md);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-sizing: border-box;
+            text-align: center;
+            user-select: none;
+        }
+
+        .card-face.back {
+            transform: rotateY(180deg);
+            background: #fafafa;
+        }
+
+        .card-content { font-size: 42px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; }
+        .card-label { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--text-secondary); margin-bottom: 16px; font-weight: 600; }
+
+        .flipped { transform: rotateY(180deg); }
+
+        /* Swipe animations */
+        .swipe-left { transform: translateX(-100px) rotate(-10deg) !important; opacity: 0; }
+        .swipe-right { transform: translateX(100px) rotate(10deg) !important; opacity: 0; }
+
+        /* --- Controls --- */
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            min-height: 60px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .controls.active { opacity: 1; pointer-events: auto; }
+
+        .btn {
+            border: none;
+            padding: 14px 28px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.2s;
+            outline: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.2;
+        }
+
+        .btn span { font-size: 10px; font-weight: 400; opacity: 0.7; margin-top: 2px; }
+        .btn:active { transform: scale(0.96); }
+
+        .btn-miss { background: #ffe5e5; color: var(--accent-red); }
+        .btn-got { background: var(--accent-green); color: white; }
+        .btn-next { background: var(--accent-blue); color: white; width: 200px; }
+
+        /* --- Info Button & Modal --- */
+        .info-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid var(--text-secondary);
+            color: var(--text-secondary);
+            background: transparent;
+            font-family: serif;
+            font-style: italic;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            transition: 0.2s;
+        }
+        .info-btn:hover { background: var(--text-secondary); color: white; }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.3s ease;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+        }
+        .close-modal {
+            position: absolute;
+            top: 15px; right: 15px;
+            background: none; border: none;
+            font-size: 20px; color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .modal-h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: var(--text-primary); }
+        .modal-h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
+        .modal-p { font-size: 15px; line-height: 1.5; color: var(--text-primary); margin-bottom: 10px; }
+        .key-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; background: #eee; border: 1px solid #ddd; font-size: 11px; font-weight: 600; font-family: monospace; }
+
+        /* --- Progress Bar --- */
+        .progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: rgba(0,0,0,0.05);
+        }
+        .progress-bar {
+            height: 100%;
+            background: var(--accent-blue);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Mobile tweaks */
+        @media (max-width: 480px) {
+            .card-container { height: 380px; }
+            .card-content { font-size: 32px; }
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="batch-indicator" id="batchIndicator">Loading...</div>
+        <div class="nav-pills">
+            <div class="nav-item" id="nav1">Exposure</div>
+            <div class="nav-item" id="nav2">Recall</div>
+            <div class="nav-item" id="nav3">Loop</div>
+        </div>
+    </header>
+
+    <main>
+        <h1 class="instruction-text" id="phaseTitle">Loading...</h1>
+
+        <div id="exposureView" class="exposure-grid"></div>
+
+        <div id="cardWrapper" class="card-container">
+            <div class="flashcard" id="flashcard">
+                <div class="card-face front">
+                    <div class="card-label">Prompt</div>
+                    <div class="card-content" id="cardFrontText"></div>
+                </div>
+                <div class="card-face back">
+                    <div class="card-label">Answer</div>
+                    <div class="card-content" id="cardBackText"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls" id="exposureControls">
+            <button class="btn btn-next" onclick="app.startRecall()">Start Recall</button>
+        </div>
+
+        <div class="controls" id="recallControls">
+            <button class="btn btn-miss" onclick="app.handleResult(false)">
+                Missed
+                <span>(Left Arrow)</span>
+            </button>
+            <button class="btn btn-got" onclick="app.handleResult(true)">
+                I knew it
+                <span>(Right Arrow)</span>
+            </button>
+        </div>
+        
+        <div class="controls" id="loopEndControls">
+             <button class="btn btn-next" id="loopBtn" onclick="app.nextStep()">Next</button>
+        </div>
+    </main>
+
+    <button class="info-btn" onclick="toggleModal()">i</button>
+
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="toggleModal()">×</button>
+            
+            <div class="modal-h2">How it Works</div>
+            
+            <div class="modal-h3">Controls</div>
+            <div class="modal-p"><span class="key-tag">SPACE</span> or <strong>Tap</strong> to Flip Card.</div>
+            <div class="modal-p"><span class="key-tag">← LEFT</span> or <strong>Swipe Left</strong> if you missed it.</div>
+            <div class="modal-p"><span class="key-tag">RIGHT →</span> or <strong>Swipe Right</strong> if you knew it.</div>
+
+            <div class="modal-h3">The Methodology</div>
+            <div class="modal-p"><strong>1. Exposure:</strong> Review the batch of 8 items. Don't memorize, just familiarize.</div>
+            <div class="modal-p"><strong>2. Recall:</strong> Test yourself. We force 2-way recall (Symbol → Meaning AND Meaning → Symbol) to ensure mastery.</div>
+            <div class="modal-p"><strong>3. Loop:</strong> The system remembers what you missed. You will loop through ONLY the missed items until you get them all right.</div>
+        </div>
+    </div>
+
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <script src="content.js"></script>
+
+    <script>
+        // Modal Logic
+        function toggleModal() {
+            document.getElementById('helpModal').classList.toggle('open');
+        }
+
+        class FlashcardApp {
+            constructor() {
+                this.allBatches = [];
+                this.currentBatchIndex = 0;
+                this.currentBatchData = [];
+                
+                // Session State
+                this.queue = [];
+                this.missedItems = [];
+                this.currentIndex = 0;
+                this.currentPhase = 1; // 1: Exposure, 2: Recall, 3: Loop
+                this.isFlipped = false;
+                
+                // UI Elements
+                this.ui = {
+                    title: document.getElementById('phaseTitle'),
+                    exposureView: document.getElementById('exposureView'),
+                    cardWrapper: document.getElementById('cardWrapper'),
+                    flashcard: document.getElementById('flashcard'),
+                    frontText: document.getElementById('cardFrontText'),
+                    backText: document.getElementById('cardBackText'),
+                    expControls: document.getElementById('exposureControls'),
+                    recallControls: document.getElementById('recallControls'),
+                    loopControls: document.getElementById('loopEndControls'),
+                    loopBtn: document.getElementById('loopBtn'),
+                    batchIndicator: document.getElementById('batchIndicator'),
+                    navs: [document.getElementById('nav1'), document.getElementById('nav2'), document.getElementById('nav3')],
+                    progressBar: document.getElementById('progressBar')
+                };
+
+                this.init();
+            }
+
+            init() {
+                if (typeof flashcardData === 'undefined' || !flashcardData.length) {
+                    this.ui.title.innerText = "Error: content.js empty or missing.";
+                    return;
+                }
+
+                // --- LOGIC: Create Batches Dynamically ---
+                const BATCH_SIZE = 8;
+                for (let i = 0; i < flashcardData.length; i += BATCH_SIZE) {
+                    const chunk = flashcardData.slice(i, i + BATCH_SIZE);
+                    this.allBatches.push(chunk);
+                }
+
+                this.setupKeyboard();
+                this.setupSwipe();
+                this.loadBatch(0);
+            }
+
+            loadBatch(index) {
+                this.currentBatchIndex = index;
+                this.currentBatchData = this.allBatches[index];
+                this.ui.batchIndicator.innerText = `Batch ${index + 1} of ${this.allBatches.length}`;
+                this.setPhase(1);
+            }
+
+            setPhase(phase) {
+                this.currentPhase = phase;
+                this.updateNav();
+                this.resetUI();
+
+                if (phase === 1) this.setupExposure();
+                else if (phase === 2) this.setupRecall();
+                else if (phase === 3) this.setupLoop();
+            }
+
+            resetUI() {
+                this.ui.exposureView.style.display = 'none';
+                this.ui.cardWrapper.style.display = 'none';
+                this.ui.expControls.classList.remove('active');
+                this.ui.recallControls.classList.remove('active');
+                this.ui.loopControls.classList.remove('active');
+                this.ui.flashcard.className = 'flashcard'; 
+                this.isFlipped = false;
+                this.ui.progressBar.style.width = '0%';
+            }
+
+            updateNav() {
+                this.ui.navs.forEach((nav, idx) => {
+                    if (idx + 1 === this.currentPhase) nav.classList.add('active');
+                    else nav.classList.remove('active');
+                });
+            }
+
+            // --- Phase 1: Exposure ---
+            setupExposure() {
+                this.ui.title.innerHTML = `Rapid Exposure <span class="sub-text">Scan these ${this.currentBatchData.length} pairs. Just familiarize.</span>`;
+                this.ui.exposureView.style.display = 'grid';
+                this.ui.exposureView.innerHTML = '';
+
+                this.currentBatchData.forEach((item, index) => {
+                    const el = document.createElement('div');
+                    el.className = 'exposure-card';
+                    el.style.animationDelay = `${index * 0.05}s`;
+                    el.innerHTML = `<span class="exp-term">${item.term}</span><span class="exp-def">${item.def}</span>`;
+                    this.ui.exposureView.appendChild(el);
+                });
+
+                setTimeout(() => this.ui.expControls.classList.add('active'), 400);
+            }
+
+            startRecall() {
+                this.setPhase(2);
+            }
+
+            // --- Phase 2: Recall (Forced 2-Way) ---
+            setupRecall() {
+                this.ui.title.innerHTML = 'Blind Recall <span class="sub-text">Testing Symbol ↔ Meaning.</span>';
+                
+                let tempQueue = [];
+                this.currentBatchData.forEach((item, idx) => {
+                    tempQueue.push({ id: idx, front: item.term, back: item.def });
+                    tempQueue.push({ id: idx, front: item.def, back: item.term });
+                });
+
+                this.queue = this.shuffle(tempQueue);
+                this.missedItems = []; 
+                this.currentIndex = 0;
+                this.loadCard();
+            }
+
+            // --- Phase 3: Loop (Missed Only) ---
+            setupLoop() {
+                if (this.missedItems.length === 0) {
+                    this.finishBatch();
+                    return;
+                }
+
+                this.ui.title.innerHTML = 'Missed Loop <span class="sub-text">Drilling the ones you missed.</span>';
+                
+                let tempQueue = [];
+                const uniqueIds = [...new Set(this.missedItems)];
+                
+                uniqueIds.forEach(id => {
+                    const item = this.currentBatchData[id];
+                    if(item) {
+                        tempQueue.push({ id: id, front: item.term, back: item.def });
+                        tempQueue.push({ id: id, front: item.def, back: item.term });
+                    }
+                });
+
+                this.queue = this.shuffle(tempQueue);
+                this.missedItems = []; 
+                this.currentIndex = 0;
+                this.loadCard();
+            }
+
+            // --- Card Logic ---
+            loadCard() {
+                this.ui.cardWrapper.style.display = 'block';
+                if (this.currentIndex >= this.queue.length) {
+                    this.endSession();
+                    return;
+                }
+
+                const card = this.queue[this.currentIndex];
+                this.isFlipped = false;
+                this.ui.flashcard.className = 'flashcard'; 
+                this.ui.recallControls.classList.remove('active');
+
+                setTimeout(() => {
+                    this.ui.frontText.innerText = card.front;
+                    this.ui.backText.innerText = card.back;
+                }, 150);
+
+                this.updateProgress();
+            }
+
+            flipCard() {
+                if (this.currentPhase === 1 || this.ui.recallControls.classList.contains('active')) return;
+                
+                this.isFlipped = true;
+                this.ui.flashcard.classList.add('flipped');
+                this.ui.recallControls.classList.add('active');
+            }
+
+            handleResult(success) {
+                if (!this.isFlipped) return;
+
+                if (success) this.ui.flashcard.classList.add('swipe-right');
+                else this.ui.flashcard.classList.add('swipe-left');
+
+                if (!success) {
+                    const currentId = this.queue[this.currentIndex].id;
+                    this.missedItems.push(currentId);
+                }
+
+                setTimeout(() => {
+                    this.currentIndex++;
+                    this.loadCard();
+                }, 300);
+            }
+
+            endSession() {
+                this.ui.cardWrapper.style.display = 'none';
+                this.ui.recallControls.classList.remove('active');
+                this.ui.progressBar.style.width = '100%';
+
+                if (this.currentPhase === 2) {
+                    if (this.missedItems.length > 0) {
+                        this.ui.title.innerHTML = 'Phase Complete';
+                        this.ui.loopBtn.innerText = `Drill ${this.missedItems.length} Misses`;
+                        this.ui.loopBtn.onclick = () => this.setPhase(3);
+                    } else {
+                        this.finishBatch();
+                    }
+                } else if (this.currentPhase === 3) {
+                    if (this.missedItems.length > 0) {
+                        this.ui.title.innerHTML = 'Keep Going';
+                        this.ui.loopBtn.innerText = `Retry ${this.missedItems.length} Misses`;
+                        this.ui.loopBtn.onclick = () => this.setPhase(3);
+                    } else {
+                        this.finishBatch();
+                    }
+                }
+                this.ui.loopControls.classList.add('active');
+            }
+
+            finishBatch() {
+                this.ui.title.innerHTML = 'Batch Mastered!';
+                this.ui.loopControls.classList.add('active');
+                
+                if (this.currentBatchIndex < this.allBatches.length - 1) {
+                    this.ui.loopBtn.innerText = "Start Next Batch";
+                    this.ui.loopBtn.onclick = () => this.loadBatch(this.currentBatchIndex + 1);
+                } else {
+                    this.ui.title.innerHTML = 'All Content Mastered!';
+                    this.ui.loopBtn.innerText = "Restart All";
+                    this.ui.loopBtn.onclick = () => this.loadBatch(0);
+                }
+            }
+
+            updateProgress() {
+                const pct = (this.currentIndex / this.queue.length) * 100;
+                this.ui.progressBar.style.width = `${pct}%`;
+            }
+
+            shuffle(array) {
+                return array.sort(() => Math.random() - 0.5);
+            }
+
+            // --- Inputs ---
+            setupKeyboard() {
+                document.addEventListener('keydown', (e) => {
+                    // Prevent Space from scrolling
+                    if (e.code === 'Space') e.preventDefault();
+
+                    if (this.ui.cardWrapper.style.display === 'none') return;
+                    
+                    if (e.code === 'Space' || e.code === 'Enter') {
+                        if (!this.isFlipped) this.flipCard();
+                    } else if (e.code === 'ArrowLeft') {
+                        if (this.isFlipped) this.handleResult(false);
+                    } else if (e.code === 'ArrowRight') {
+                        if (this.isFlipped) this.handleResult(true);
+                    }
+                });
+                
+                this.ui.cardWrapper.addEventListener('click', () => {
+                   if (!this.isFlipped) this.flipCard(); 
+                });
+            }
+
+            setupSwipe() {
+                let startX = 0;
+                let endX = 0;
+                const threshold = 50;
+                const el = this.ui.cardWrapper;
+
+                el.addEventListener('touchstart', (e) => {
+                    startX = e.changedTouches[0].screenX;
+                }, {passive: true});
+
+                el.addEventListener('touchend', (e) => {
+                    if (!this.isFlipped) return;
+                    endX = e.changedTouches[0].screenX;
+                    if (startX - endX > threshold) this.handleResult(false); 
+                    if (endX - startX > threshold) this.handleResult(true); 
+                }, {passive: true});
+            }
+
+            nextStep() { }
+        }
+
+        const app = new FlashcardApp();
+
+    </script>
+</body>
+
+</html>
