@@ -264,7 +264,7 @@ main {
 }
 
 .exposure-grid {
-  display: none;
+  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
   width: 100%;
@@ -284,7 +284,8 @@ main {
   border-radius: 16px;
   box-shadow: var(--shadow-sm);
   text-align: left;
-  height: 260px;
+  min-height: 260px;
+  height: auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -474,6 +475,21 @@ main {
   padding: 6px;
 }
 
+@media (max-width: 1024px) {
+  .study-grid,
+  .exposure-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .study-grid,
+  .exposure-grid {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+  }
+}
+
 .grid-flip-card {
   border: none;
   background: transparent;
@@ -614,7 +630,29 @@ main {
 
 .exposure-controls .btn,
 .quiz-controls .btn {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   white-space: nowrap;
+}
+
+.footer-btn-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.btn-next .footer-btn-icon {
+  filter: brightness(0) invert(1);
+}
+
+.footer-btn-text {
+  margin-top: 0;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 1;
+  line-height: 1;
 }
 
 .info-btn {
@@ -784,6 +822,22 @@ main {
   .exposure-controls .btn,
   .quiz-controls .btn {
     flex: 0 0 auto;
+    min-width: 46px;
+    height: 46px;
+    padding: 10px;
+    border-radius: 12px;
+    gap: 0;
+  }
+
+  .exposure-controls .footer-btn-icon,
+  .quiz-controls .footer-btn-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .exposure-controls .footer-btn-text,
+  .quiz-controls .footer-btn-text {
+    display: none;
   }
 
   .btn-quiet {

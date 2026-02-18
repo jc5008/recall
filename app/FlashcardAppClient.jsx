@@ -1,6 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import iconNext from "./icon_next.png";
+import iconPrevious from "./icon_previous.png";
+import iconVerify from "./icon_verify.png";
 
 const BATCH_SIZE = 8;
 const MODES = ["reference", "exposure", "grid", "recall", "loop", "quiz"];
@@ -582,10 +586,12 @@ export default function FlashcardAppClient({ decks }) {
                     onClick={() => loadBatch(Math.max(currentBatchIndex - 1, 0))}
                     disabled={currentBatchIndex === 0}
                   >
-                    Previous Batch
+                    <Image className="footer-btn-icon" src={iconPrevious} alt="" />
+                    <span className="footer-btn-text">Previous Batch</span>
                   </button>
                   <button className="btn btn-next" onClick={startRecall}>
-                    Start Recall
+                    <Image className="footer-btn-icon" src={iconVerify} alt="" />
+                    <span className="footer-btn-text">Start Recall</span>
                   </button>
                   <button
                     className="btn btn-quiet"
@@ -594,7 +600,8 @@ export default function FlashcardAppClient({ decks }) {
                     }
                     disabled={currentBatchIndex >= batchCount - 1}
                   >
-                    Next Batch
+                    <Image className="footer-btn-icon" src={iconNext} alt="" />
+                    <span className="footer-btn-text">Next Batch</span>
                   </button>
                 </div>
               </>
@@ -809,21 +816,24 @@ export default function FlashcardAppClient({ decks }) {
                         onClick={() => goToQuizIndex(quizIndex - 1)}
                         disabled={quizIndex === 0}
                       >
-                        Previous
+                        <Image className="footer-btn-icon" src={iconPrevious} alt="" />
+                        <span className="footer-btn-text">Previous</span>
                       </button>
                       <button
                         className="btn btn-next"
                         onClick={checkQuizAnswer}
                         disabled={!quizSelected || quizChecked}
                       >
-                        Check Answer
+                        <Image className="footer-btn-icon" src={iconVerify} alt="" />
+                        <span className="footer-btn-text">Check Answer</span>
                       </button>
                       <button
                         className="btn btn-quiet"
                         onClick={() => goToQuizIndex(quizIndex + 1)}
                         disabled={quizIndex >= orderedCards.length - 1}
                       >
-                        Next
+                        <Image className="footer-btn-icon" src={iconNext} alt="" />
+                        <span className="footer-btn-text">Next</span>
                       </button>
                     </div>
                   </div>
