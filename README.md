@@ -1,6 +1,6 @@
-# Focus | Mastery Training (Next.js)
+# Recall | Mastery Training (Next.js)
 
-Focus is a Next.js flashcard trainer with multi-mode study:
+Recall is a Next.js flashcard trainer with multi-mode study:
 
 1. Reference
 2. Exposure

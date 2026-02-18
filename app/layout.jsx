@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Focus | Mastery Training",
+  title: "Recall | Mastery Training",
   description: "Forced recall flashcard trainer with adaptive missed-item loops.",
 };
 
