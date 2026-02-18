@@ -22,6 +22,25 @@ It now supports multiple decks from a folder of deck files.
 - `npm run build`
 - `npm start`
 
+## Database Migrations (Neon)
+
+- Ensure `DATABASE_URL` is set in `.env.local`.
+- Run: `npm run db:migrate`
+
+## Admin Reports
+
+- Set both in `.env.local`:
+  - `ADMIN_PASSWORD`
+  - `ADMIN_SESSION_SECRET`
+- Open `/admin/reports` and sign in with `ADMIN_PASSWORD`.
+- Backing APIs:
+  - `GET /api/admin/reports/top-difficult-cards`
+  - `GET /api/admin/reports/employee-progress`
+
+## Tests
+
+- Run all tests: `npm test`
+
 ## Decks Folder
 
 Decks live in `decks/` as JavaScript files that default-export an array.

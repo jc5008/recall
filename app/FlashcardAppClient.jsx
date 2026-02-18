@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import iconNext from "./icon_next.png";
 import iconPrevious from "./icon_previous.png";
 import iconVerify from "./icon_verify.png";
@@ -91,6 +91,13 @@ function buildQuizOptions(card) {
   return shuffle(options);
 }
 
+function createClientId(prefix) {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `${prefix}_${crypto.randomUUID()}`;
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
 export default function FlashcardAppClient({ decks }) {
   const deckNames = useMemo(() => Object.keys(decks).sort(), [decks]);
   const [selectedDeckName, setSelectedDeckName] = useState(deckNames[0] ?? "");
@@ -117,6 +124,18 @@ export default function FlashcardAppClient({ decks }) {
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
+  const sessionIdRef = useRef("");
+  const fingerprintIdRef = useRef("");
+  const questionStartAtRef = useRef(0);
+  const modeEnterAtRef = useRef(0);
+  const previousModeRef = useRef("");
+  const searchDebounceRef = useRef(null);
+  const exposureBatchEnterAtRef = useRef(0);
+  const exposureBatchIdRef = useRef("");
+  const recallCardShownAtRef = useRef(0);
+  const recallLoggedIdsRef = useRef(new Set());
+  const loopAttemptCountsRef = useRef(new Map());
+  const loopMetricsSentRef = useRef(false);
 
   const isHomeScreen = !activeDeckName;
   const activeDeckData = useMemo(
@@ -166,6 +185,61 @@ export default function FlashcardAppClient({ decks }) {
     return 0;
   }, [mode, studyQueue.length, studyIndex, quizIndex, orderedCards.length]);
 
+  function getTelemetryBase() {
+    return {
+      session_id: sessionIdRef.current,
+      fingerprint_id: fingerprintIdRef.current,
+      user_id: null,
+      deck_name: activeDeckName || null,
+      user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+      language: typeof navigator !== "undefined" ? navigator.language : null,
+      timezone:
+        typeof Intl !== "undefined"
+          ? Intl.DateTimeFormat().resolvedOptions().timeZone
+          : null,
+      screen_width: typeof window !== "undefined" ? window.innerWidth : null,
+      screen_height: typeof window !== "undefined" ? window.innerHeight : null,
+      referrer_url: typeof document !== "undefined" ? document.referrer || null : null,
+    };
+  }
+
+  function trackEvents(events, options = {}) {
+    if (!events?.length || !sessionIdRef.current || !fingerprintIdRef.current) {
+      return;
+    }
+
+    if (options?.beacon && typeof navigator !== "undefined" && navigator.sendBeacon) {
+      const blob = new Blob([JSON.stringify({ events })], { type: "application/json" });
+      navigator.sendBeacon("/api/telemetry", blob);
+      return;
+    }
+
+    fetch("/api/telemetry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ events }),
+      keepalive: true,
+    }).catch(() => {
+      // Fail silently to avoid blocking quiz flow.
+    });
+  }
+
+  function trackModeDuration(modeName, startedAt) {
+    if (!modeName || !startedAt) return;
+    const durationSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    if (durationSeconds <= 0) return;
+
+    trackEvents([
+      {
+        ...getTelemetryBase(),
+        type: "session_log",
+        mode: modeName,
+        duration_seconds: durationSeconds,
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+  }
+
   function resetInteractiveState() {
     setStudyQueue([]);
     setStudyIndex(0);
@@ -194,6 +268,7 @@ export default function FlashcardAppClient({ decks }) {
 
   function startRecall() {
     setMode("recall");
+    recallLoggedIdsRef.current = new Set();
     setStudyQueue(buildStudyQueue(currentBatchData));
     setStudyIndex(0);
     setStudyFlipped(false);
@@ -207,6 +282,8 @@ export default function FlashcardAppClient({ decks }) {
       new Set(missedItems).has(card.cardNumber),
     );
     setMode("loop");
+    loopAttemptCountsRef.current = new Map();
+    loopMetricsSentRef.current = false;
     setStudyQueue(buildStudyQueue(loopCards));
     setStudyIndex(0);
     setStudyFlipped(false);
@@ -265,6 +342,20 @@ export default function FlashcardAppClient({ decks }) {
 
   function flipStudyCard() {
     if (!hasStudyCard || studyFlipped || mode === "exposure") return;
+
+    if (mode === "recall") {
+      const elapsedMs = Math.max(0, Date.now() - (recallCardShownAtRef.current || Date.now()));
+      trackEvents([
+        {
+          ...getTelemetryBase(),
+          type: "card_timing",
+          card_id: String(currentStudyCard.cardNumber),
+          time_to_flip_ms: elapsedMs,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    }
+
     setStudyFlipped(true);
   }
 
@@ -281,6 +372,34 @@ export default function FlashcardAppClient({ decks }) {
       }
     }
 
+    const telemetryBatch = [];
+    if (mode === "recall" && !recallLoggedIdsRef.current.has(currentStudyCard.cardNumber)) {
+      recallLoggedIdsRef.current.add(currentStudyCard.cardNumber);
+      telemetryBatch.push({
+        ...getTelemetryBase(),
+        type: "quiz_result",
+        card_id: String(currentStudyCard.cardNumber),
+        batch_id: `${activeDeckName || "deck"}_batch_${currentBatchIndex + 1}`,
+        is_correct: Boolean(success),
+        phase: "recall",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    if (success) {
+      telemetryBatch.push({
+        ...getTelemetryBase(),
+        type: "mastery_log",
+        card_id: String(currentStudyCard.cardNumber),
+        marked_known: true,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    if (telemetryBatch.length) {
+      trackEvents(telemetryBatch);
+    }
+
     window.setTimeout(() => {
       setStudyIndex((prev) => prev + 1);
       setStudyFlipped(false);
@@ -290,6 +409,17 @@ export default function FlashcardAppClient({ decks }) {
 
   function toggleGridCard(cardNumber) {
     setGridFlips((prev) => ({ ...prev, [cardNumber]: !prev[cardNumber] }));
+    trackEvents([
+      {
+        ...getTelemetryBase(),
+        type: "card_interaction",
+        card_id: String(cardNumber),
+        interaction_type: "flip",
+        phase: "grid",
+        action: "flip",
+        timestamp: new Date().toISOString(),
+      },
+    ]);
   }
 
   function updateQuizOptions(nextIndex) {
@@ -307,11 +437,35 @@ export default function FlashcardAppClient({ decks }) {
     setQuizIndex(bounded);
     setQuizSelected("");
     setQuizChecked(false);
+    questionStartAtRef.current = Date.now();
     updateQuizOptions(bounded);
   }
 
   function checkQuizAnswer() {
     if (!quizSelected || !quizCard) return;
+    const now = Date.now();
+    const elapsedMs = Math.max(0, now - (questionStartAtRef.current || now));
+    const isCorrect = quizSelected === quizCard.answer;
+    const base = getTelemetryBase();
+
+    trackEvents([
+      {
+        ...base,
+        type: "quiz_attempt",
+        card_id: String(quizCard.cardNumber),
+        is_correct: isCorrect,
+        selected_answer_id: quizSelected,
+        timestamp: new Date(now).toISOString(),
+      },
+      {
+        ...base,
+        type: "quiz_timing",
+        card_id: String(quizCard.cardNumber),
+        time_to_answer_ms: elapsedMs,
+        timestamp: new Date(now).toISOString(),
+      },
+    ]);
+
     setQuizChecked(true);
   }
 
@@ -321,6 +475,8 @@ export default function FlashcardAppClient({ decks }) {
     setMissedItems(retryNumbers);
     setLoopMisses([]);
     setMode("loop");
+    loopAttemptCountsRef.current = new Map();
+    loopMetricsSentRef.current = false;
     setStudyQueue(buildStudyQueue(retryCards));
     setStudyIndex(0);
     setStudyFlipped(false);
@@ -341,6 +497,40 @@ export default function FlashcardAppClient({ decks }) {
     updateQuizOptions(quizIndex);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderedCards.length]);
+
+  useEffect(() => {
+    if (mode !== "recall" && mode !== "loop") return;
+    if (!currentStudyCard || studyIndex >= studyQueue.length) return;
+    recallCardShownAtRef.current = Date.now();
+
+    if (mode === "loop") {
+      const key = String(currentStudyCard.cardNumber);
+      const previous = loopAttemptCountsRef.current.get(key) ?? 0;
+      loopAttemptCountsRef.current.set(key, previous + 1);
+    }
+  }, [mode, currentStudyCard, studyIndex, studyQueue.length]);
+
+  useEffect(() => {
+    if (isHomeScreen) return;
+    if (mode !== "loop") return;
+    if (!studyQueue.length || studyIndex < studyQueue.length) return;
+    if (loopMetricsSentRef.current) return;
+
+    const batchId = `${activeDeckName || "deck"}_batch_${currentBatchIndex + 1}`;
+    const events = Array.from(loopAttemptCountsRef.current.entries()).map(([cardId, attempts]) => ({
+      ...getTelemetryBase(),
+      type: "loop_metric",
+      card_id: cardId,
+      batch_id: batchId,
+      attempts_count: attempts,
+      timestamp: new Date().toISOString(),
+    }));
+
+    if (events.length) {
+      trackEvents(events);
+    }
+    loopMetricsSentRef.current = true;
+  }, [mode, studyIndex, studyQueue.length, isHomeScreen, currentBatchIndex, activeDeckName]);
 
   useEffect(() => {
     if (isHomeScreen) return;
@@ -376,6 +566,163 @@ export default function FlashcardAppClient({ decks }) {
       setSelectedDeckName(deckNames[0]);
     }
   }, [selectedDeckName, deckNames]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const existingFingerprint = window.localStorage.getItem("recall_fingerprint_id");
+    const fingerprintId = existingFingerprint || createClientId("fp");
+    if (!existingFingerprint) {
+      window.localStorage.setItem("recall_fingerprint_id", fingerprintId);
+    }
+    fingerprintIdRef.current = fingerprintId;
+
+    const existingSession = window.sessionStorage.getItem("recall_session_id");
+    const sessionId = existingSession || createClientId("session");
+    if (!existingSession) {
+      window.sessionStorage.setItem("recall_session_id", sessionId);
+    }
+    sessionIdRef.current = sessionId;
+  }, []);
+
+  useEffect(() => {
+    if (isHomeScreen) {
+      trackModeDuration(previousModeRef.current, modeEnterAtRef.current);
+      previousModeRef.current = "";
+      modeEnterAtRef.current = 0;
+      return;
+    }
+
+    if (!previousModeRef.current) {
+      previousModeRef.current = mode;
+      modeEnterAtRef.current = Date.now();
+      return;
+    }
+
+    if (previousModeRef.current !== mode) {
+      trackModeDuration(previousModeRef.current, modeEnterAtRef.current);
+      previousModeRef.current = mode;
+      modeEnterAtRef.current = Date.now();
+    }
+  }, [mode, isHomeScreen]);
+
+  useEffect(() => {
+    if (isHomeScreen || !searchQuery.trim()) return;
+
+    if (searchDebounceRef.current) {
+      window.clearTimeout(searchDebounceRef.current);
+    }
+
+    searchDebounceRef.current = window.setTimeout(() => {
+      const eventType = mode === "reference" ? "reference_view" : "search_log";
+      trackEvents([
+        {
+          ...getTelemetryBase(),
+          type: eventType,
+          mode,
+          search_term: searchQuery.trim(),
+          alpha_code: mode === "reference" ? searchQuery.trim() : null,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    }, 500);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        window.clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [searchQuery, mode, isHomeScreen]);
+
+  useEffect(() => {
+    if (isHomeScreen || mode !== "exposure") {
+      if (exposureBatchEnterAtRef.current && exposureBatchIdRef.current) {
+        const durationSeconds = Math.max(
+          0,
+          Math.floor((Date.now() - exposureBatchEnterAtRef.current) / 1000),
+        );
+        if (durationSeconds > 0) {
+          trackEvents([
+            {
+              ...getTelemetryBase(),
+              type: "phase_log",
+              batch_id: exposureBatchIdRef.current,
+              phase: "exposure",
+              duration_seconds: durationSeconds,
+              timestamp: new Date().toISOString(),
+            },
+          ]);
+        }
+      }
+      exposureBatchEnterAtRef.current = 0;
+      exposureBatchIdRef.current = "";
+      return;
+    }
+
+    const nextBatchId = `${activeDeckName || "deck"}_batch_${currentBatchIndex + 1}`;
+    if (!exposureBatchEnterAtRef.current) {
+      exposureBatchEnterAtRef.current = Date.now();
+      exposureBatchIdRef.current = nextBatchId;
+      return;
+    }
+
+    if (exposureBatchIdRef.current !== nextBatchId) {
+      const durationSeconds = Math.max(
+        0,
+        Math.floor((Date.now() - exposureBatchEnterAtRef.current) / 1000),
+      );
+      if (durationSeconds > 0) {
+        trackEvents([
+          {
+            ...getTelemetryBase(),
+            type: "phase_log",
+            batch_id: exposureBatchIdRef.current,
+            phase: "exposure",
+            duration_seconds: durationSeconds,
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      }
+      exposureBatchEnterAtRef.current = Date.now();
+      exposureBatchIdRef.current = nextBatchId;
+    }
+  }, [mode, currentBatchIndex, isHomeScreen, activeDeckName]);
+
+  useEffect(() => {
+    if (isHomeScreen) return undefined;
+
+    const sendLoopAbandon = () => {
+      if (mode !== "loop") return;
+
+      const batchId = `${activeDeckName || "deck"}_batch_${currentBatchIndex + 1}`;
+      trackEvents(
+        [
+          {
+            ...getTelemetryBase(),
+            type: "session_abandon",
+            batch_id: batchId,
+            phase: "loop",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        { beacon: true },
+      );
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        sendLoopAbandon();
+      }
+    };
+
+    window.addEventListener("beforeunload", sendLoopAbandon);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", sendLoopAbandon);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [mode, isHomeScreen, activeDeckName, currentBatchIndex]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 480px)");

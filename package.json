@@ -2,14 +2,18 @@
   "name": "recall-mastery-training",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:migrate": "node scripts/migrate.js",
+    "test": "node --test"
   },
   "dependencies": {
     "next": "latest",
+    "pg": "^8.18.0",
     "react": "latest",
     "react-dom": "latest"
   }
