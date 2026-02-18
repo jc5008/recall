@@ -91,6 +91,8 @@ export default function FlashcardAppClient({ decks }) {
   const deckNames = useMemo(() => Object.keys(decks).sort(), [decks]);
   const [selectedDeckName, setSelectedDeckName] = useState(deckNames[0] ?? "");
   const [activeDeckName, setActiveDeckName] = useState("");
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [mode, setMode] = useState("exposure");
   const [searchQuery, setSearchQuery] = useState("");
   const [orderedCards, setOrderedCards] = useState([]);
@@ -211,6 +213,9 @@ export default function FlashcardAppClient({ decks }) {
   function startDeck() {
     if (!selectedDeckName) return;
     setActiveDeckName(selectedDeckName);
+    if (isSmallScreen) {
+      setIsHeaderCollapsed(true);
+    }
     setIsHelpOpen(false);
     setMode("exposure");
     setSearchQuery("");
@@ -368,6 +373,23 @@ export default function FlashcardAppClient({ decks }) {
     }
   }, [selectedDeckName, deckNames]);
 
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 480px)");
+    const applyScreenState = (isMobile) => {
+      setIsSmallScreen(isMobile);
+      if (!isMobile) {
+        setIsHeaderCollapsed(false);
+      } else {
+        setIsHeaderCollapsed(true);
+      }
+    };
+
+    applyScreenState(mediaQuery.matches);
+    const onChange = (event) => applyScreenState(event.matches);
+    mediaQuery.addEventListener("change", onChange);
+    return () => mediaQuery.removeEventListener("change", onChange);
+  }, []);
+
   if (!deckNames.length) {
     return (
       <main>
@@ -395,6 +417,7 @@ export default function FlashcardAppClient({ decks }) {
   const uniqueMissed = [...new Set(missedItems)];
   const uniqueLoopMisses = [...new Set(loopMisses)];
   const hasLoopSource = uniqueMissed.length > 0 || studyQueue.length > 0 || uniqueLoopMisses.length > 0;
+  const showHeaderDetails = !isHomeScreen && (!isSmallScreen || !isHeaderCollapsed);
 
   return (
     <>
@@ -406,12 +429,23 @@ export default function FlashcardAppClient({ decks }) {
             <div className="batch-indicator">
               {`${formatDeckName(activeDeckName)} | Batch ${batchNumber} of ${Math.max(batchCount, 1)}`}
             </div>
-            <button className="home-btn" onClick={goHome}>
-              Home
-            </button>
+            <div className="header-action-group">
+              {isSmallScreen && (
+                <button
+                  className="header-toggle-btn"
+                  onClick={() => setIsHeaderCollapsed((prev) => !prev)}
+                  aria-label={isHeaderCollapsed ? "Expand header" : "Collapse header"}
+                >
+                  {isHeaderCollapsed ? "Expand" : "Collapse"}
+                </button>
+              )}
+              <button className="home-btn" onClick={goHome}>
+                Home
+              </button>
+            </div>
           </div>
         )}
-        {!isHomeScreen && (
+        {showHeaderDetails && (
           <>
             <div className="nav-pills mode-pills">
               <button

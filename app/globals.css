@@ -65,6 +65,24 @@ header {
   gap: 12px;
 }
 
+.header-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-toggle-btn {
+  display: none;
+  border: 1px solid rgba(118, 118, 128, 0.25);
+  background: #fff;
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .home-btn {
   border: 1px solid rgba(118, 118, 128, 0.25);
   background: #fff;
@@ -705,6 +723,20 @@ main {
 }
 
 @media (max-width: 480px) {
+  .header-row {
+    align-items: flex-start;
+  }
+
+  .header-action-group {
+    flex-shrink: 0;
+  }
+
+  .header-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   main {
     padding: 14px 12px 86px;
   }
