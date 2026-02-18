@@ -1,11 +1,13 @@
+import price_lines from "./price_lines";
 import elements from "./elements";
 import greek_letters from "./greek_letters";
-import price_lines from "./price_lines";
+import electrical_terminology from "./electrical_Terminology.js";
 
 const decks = {
+  price_lines,
+  electrical_terminology,
   elements,
   greek_letters,
-  price_lines,
 };
 
 export default decks;
