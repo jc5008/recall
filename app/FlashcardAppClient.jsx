@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import iconNext from "./icon_next.png";
 import iconPrevious from "./icon_previous.png";
@@ -104,6 +105,7 @@ export default function FlashcardAppClient({ decks }) {
   const [activeDeckName, setActiveDeckName] = useState("");
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [userSession, setUserSession] = useState(null);
   const [mode, setMode] = useState("exposure");
   const [searchQuery, setSearchQuery] = useState("");
   const [orderedCards, setOrderedCards] = useState([]);
@@ -189,7 +191,7 @@ export default function FlashcardAppClient({ decks }) {
     return {
       session_id: sessionIdRef.current,
       fingerprint_id: fingerprintIdRef.current,
-      user_id: null,
+      user_id: userSession?.userId ?? null,
       deck_name: activeDeckName || null,
       user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       language: typeof navigator !== "undefined" ? navigator.language : null,
@@ -201,6 +203,16 @@ export default function FlashcardAppClient({ decks }) {
       screen_height: typeof window !== "undefined" ? window.innerHeight : null,
       referrer_url: typeof document !== "undefined" ? document.referrer || null : null,
     };
+  }
+
+  async function logoutUser() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore
+    } finally {
+      setUserSession(null);
+    }
   }
 
   function trackEvents(events, options = {}) {
@@ -586,6 +598,25 @@ export default function FlashcardAppClient({ decks }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    async function loadUserSession() {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        const json = await response.json();
+        if (!cancelled && json?.authenticated && json?.user) {
+          setUserSession(json.user);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    loadUserSession();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (isHomeScreen) {
       trackModeDuration(previousModeRef.current, modeEnterAtRef.current);
       previousModeRef.current = "";
@@ -869,6 +900,30 @@ export default function FlashcardAppClient({ decks }) {
             <p className="home-subtext">
               What would you like to learn today?
             </p>
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+              }}
+            >
+              {userSession ? (
+                <>
+                  <span style={{ color: "#666", fontSize: "13px" }}>
+                    Signed in as {userSession.email}
+                  </span>
+                  <button className="btn btn-quiet" onClick={logoutUser}>
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <Link href="/auth" style={{ color: "#0071e3", fontSize: "14px" }}>
+                  Sign in or create account
+                </Link>
+              )}
+            </div>
             <label className="home-label" htmlFor="deckSelect">
               Deck
             </label>

@@ -37,6 +37,13 @@ It now supports multiple decks from a folder of deck files.
   - `GET /api/admin/reports/top-difficult-cards`
   - `GET /api/admin/reports/employee-progress`
 
+## User Authentication
+
+- Set in `.env.local`:
+  - `AUTH_SESSION_SECRET`
+- Use `/auth` to register/sign in users.
+- Signed-in user identity is attached to telemetry server-side.
+
 ## Tests
 
 - Run all tests: `npm test`

@@ -1,0 +1,10 @@
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS display_name TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);

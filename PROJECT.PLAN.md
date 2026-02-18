@@ -48,6 +48,13 @@ Enable admins to generate reports on employee progress and identify problem area
     - `POST /api/admin/login`
     - `POST /api/admin/logout`
     - `GET /api/admin/session`
+  - User auth endpoints and page added:
+    - `POST /api/auth/register`
+    - `POST /api/auth/login`
+    - `POST /api/auth/logout`
+    - `GET /api/auth/session`
+    - `app/auth/page.jsx`
+  - Telemetry now binds `user_id` from server-verified user session cookie.
   - Admin report page added: `app/admin/reports/page.jsx`
   - Automated tests added:
     - telemetry payload validation

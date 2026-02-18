@@ -1,5 +1,6 @@
 import { query, withTransaction } from "../../../lib/db/client";
 import { validateTelemetryBatch } from "../../../lib/telemetry/validation";
+import { getUserSessionCookieName, verifyUserSessionToken } from "../../../lib/auth/session";
 
 export const runtime = "nodejs";
 
@@ -49,12 +50,17 @@ async function ensureSession(client, event) {
   );
 }
 
-async function insertEvent(client, event) {
+async function insertEvent(client, event, context) {
   const type = normalizeString(event.type);
 
   if (!type) return;
 
-  await ensureSession(client, event);
+  const normalizedEvent = {
+    ...event,
+    user_id: context?.userId ?? normalizeString(event.user_id),
+  };
+
+  await ensureSession(client, normalizedEvent);
 
   if (type === "session_log") {
     await client.query(
@@ -65,13 +71,13 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.mode) ?? "unknown",
-        Math.max(0, Number(event.duration_seconds ?? 0)),
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.mode) ?? "unknown",
+        Math.max(0, Number(normalizedEvent.duration_seconds ?? 0)),
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -87,14 +93,14 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.card_id) ?? "unknown",
-        Boolean(event.is_correct),
-        normalizeString(event.selected_answer_id),
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.card_id) ?? "unknown",
+        Boolean(normalizedEvent.is_correct),
+        normalizeString(normalizedEvent.selected_answer_id),
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -109,13 +115,13 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.card_id) ?? "unknown",
-        Math.max(0, Number(event.time_to_answer_ms ?? 0)),
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.card_id) ?? "unknown",
+        Math.max(0, Number(normalizedEvent.time_to_answer_ms ?? 0)),
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -130,13 +136,13 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.mode) ?? "unknown",
-        normalizeString(event.search_term) ?? "",
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.mode) ?? "unknown",
+        normalizeString(normalizedEvent.search_term) ?? "",
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -151,12 +157,12 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.alpha_code),
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.alpha_code),
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -171,15 +177,15 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.card_id) ?? "unknown",
-        normalizeString(event.interaction_type) ?? "unknown",
-        normalizeString(event.phase),
-        normalizeString(event.action),
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.card_id) ?? "unknown",
+        normalizeString(normalizedEvent.interaction_type) ?? "unknown",
+        normalizeString(normalizedEvent.phase),
+        normalizeString(normalizedEvent.action),
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -194,14 +200,14 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.batch_id),
-        normalizeString(event.phase) ?? "unknown",
-        Math.max(0, Number(event.duration_seconds ?? 0)),
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.batch_id),
+        normalizeString(normalizedEvent.phase) ?? "unknown",
+        Math.max(0, Number(normalizedEvent.duration_seconds ?? 0)),
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -216,15 +222,15 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.card_id) ?? "unknown",
-        normalizeString(event.batch_id),
-        Boolean(event.is_correct),
-        normalizeString(event.phase) ?? "unknown",
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.card_id) ?? "unknown",
+        normalizeString(normalizedEvent.batch_id),
+        Boolean(normalizedEvent.is_correct),
+        normalizeString(normalizedEvent.phase) ?? "unknown",
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -239,13 +245,13 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.card_id) ?? "unknown",
-        Math.max(0, Number(event.time_to_flip_ms ?? 0)),
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.card_id) ?? "unknown",
+        Math.max(0, Number(normalizedEvent.time_to_flip_ms ?? 0)),
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -260,14 +266,14 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.card_id) ?? "unknown",
-        normalizeString(event.batch_id),
-        Math.max(0, Number(event.attempts_count ?? 0)),
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.card_id) ?? "unknown",
+        normalizeString(normalizedEvent.batch_id),
+        Math.max(0, Number(normalizedEvent.attempts_count ?? 0)),
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -282,13 +288,13 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.card_id) ?? "unknown",
-        Boolean(event.marked_known),
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.card_id) ?? "unknown",
+        Boolean(normalizedEvent.marked_known),
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
     return;
@@ -303,13 +309,13 @@ async function insertEvent(client, event) {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
       [
-        normalizeString(event.session_id),
-        normalizeString(event.user_id),
-        normalizeString(event.fingerprint_id) ?? "unknown",
-        normalizeString(event.deck_name),
-        normalizeString(event.batch_id),
-        normalizeString(event.phase) ?? "unknown",
-        toIsoOrNow(event.timestamp),
+        normalizeString(normalizedEvent.session_id),
+        normalizeString(normalizedEvent.user_id),
+        normalizeString(normalizedEvent.fingerprint_id) ?? "unknown",
+        normalizeString(normalizedEvent.deck_name),
+        normalizeString(normalizedEvent.batch_id),
+        normalizeString(normalizedEvent.phase) ?? "unknown",
+        toIsoOrNow(normalizedEvent.timestamp),
       ],
     );
   }
@@ -319,6 +325,11 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const events = Array.isArray(body?.events) ? body.events : [];
+    const token = request.cookies.get(getUserSessionCookieName())?.value;
+    const userSession = verifyUserSessionToken(token);
+    const context = {
+      userId: userSession.ok ? userSession.payload.userId : null,
+    };
 
     if (!events.length) {
       return Response.json({ ok: true, inserted: 0 });
@@ -331,7 +342,7 @@ export async function POST(request) {
 
     await withTransaction(async (client) => {
       for (const event of events) {
-        await insertEvent(client, event);
+        await insertEvent(client, event, context);
       }
     });
 
