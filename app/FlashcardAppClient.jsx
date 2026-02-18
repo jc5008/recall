@@ -514,9 +514,9 @@ export default function FlashcardAppClient({ decks }) {
       <main>
         {isHomeScreen ? (
           <div className="home-card">
-            <h1 className="instruction-text">Focus | Mastery Training</h1>
+            <h1 className="instruction-text">Recall | Mastery Training</h1>
             <p className="home-subtext">
-              Select a deck, then start your exposure, recall, and loop session.
+              What would you like to learn today?
             </p>
             <label className="home-label" htmlFor="deckSelect">
               Deck
@@ -848,31 +848,51 @@ export default function FlashcardAppClient({ decks }) {
 
               <div className="modal-h2">How it Works</div>
 
-              <div className="modal-h3">Controls</div>
+              <div className="modal-h3">The 3 Viewing Modes</div>
               <div className="modal-p">
-                <span className="key-tag">SPACE</span> or <strong>Tap</strong> to Flip Card.
+                <strong>Reference:</strong> The master list containing all codes and
+                definitions. Use this for quick lookups without testing yourself.
               </div>
               <div className="modal-p">
-                <span className="key-tag">LEFT</span> or <strong>Swipe Left</strong> if you
-                missed it.
+                <strong>Grid Mode:</strong> A bird's-eye view of flip-cards. Best for rapid
+                scanning and initial familiarization.
               </div>
               <div className="modal-p">
-                <span className="key-tag">RIGHT</span> or <strong>Swipe Right</strong> if you
-                knew it.
+                <strong>Quiz Mode:</strong> The active testing interface. Focuses on one item at
+                a time (either Flashcard or Multiple Choice style) for deep recall.
               </div>
 
-              <div className="modal-h3">The Methodology</div>
+              <div className="modal-h3">The Methodology (Progression)</div>
               <div className="modal-p">
-                <strong>1. Exposure:</strong> Review the batch of 8 items. Do not memorize,
-                just familiarize.
+                <strong>Exposure:</strong> Start in Grid Mode. Read through the batch of items. Do
+                not memorize yet; just familiarize yourself with the content.
               </div>
               <div className="modal-p">
-                <strong>2. Recall:</strong> Test yourself. We force 2-way recall to ensure
-                mastery.
+                <strong>Recall:</strong> Switch to Quiz Mode. The answer is hidden. Force yourself
+                to produce the answer mentally before checking.
               </div>
               <div className="modal-p">
-                <strong>3. Loop:</strong> The system remembers what you missed. You will loop
-                through only the missed items until you get them all right.
+                <strong>Loop:</strong> The system tracks what you know. Use the "I got it" button
+                to remove items you have mastered. Loop through the remaining items until your
+                progress bar hits 100%.
+              </div>
+
+              <div className="modal-h3">Controls</div>
+              <div className="modal-p">
+                <strong>Flip / Check Answer:</strong> <span className="key-tag">SPACE</span> or
+                <strong> Tap the card</strong>.
+              </div>
+              <div className="modal-p">
+                <strong>Next / Missed:</strong> <span className="key-tag">LEFT ARROW</span> or
+                <strong> Swipe Left</strong> (Keeps item in the loop).
+              </div>
+              <div className="modal-p">
+                <strong>I Got It / Known:</strong> <span className="key-tag">RIGHT ARROW</span> or
+                <strong> Swipe Right</strong> (Removes item from the loop).
+              </div>
+              <div className="modal-p">
+                <strong>Search:</strong> Use the top bar to filter specific codes or terms
+                instantly.
               </div>
             </div>
           </div>

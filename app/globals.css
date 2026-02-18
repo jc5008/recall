@@ -658,6 +658,9 @@ main {
   max-width: 400px;
   width: 90%;
   position: relative;
+  max-height: min(84vh, 720px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .close-modal {
@@ -788,6 +791,12 @@ main {
 
   .quiz-card {
     padding: 16px;
+  }
+
+  .modal-content {
+    width: 94%;
+    max-height: 86vh;
+    padding: 24px 18px;
   }
 }
 
