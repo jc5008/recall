@@ -576,7 +576,7 @@ export default function FlashcardAppClient({ decks }) {
                   ))}
                 </div>
 
-                <div className="controls active">
+                <div className="controls active exposure-controls">
                   <button
                     className="btn btn-quiet"
                     onClick={() => loadBatch(Math.max(currentBatchIndex - 1, 0))}

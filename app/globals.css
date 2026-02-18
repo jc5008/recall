@@ -265,13 +265,13 @@ main {
 
 .exposure-grid {
   display: none;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
   width: 100%;
-  max-width: 600px;
+  max-width: 980px;
   overflow-y: auto;
-  max-height: 60vh;
-  padding: 4px;
+  max-height: 72vh;
+  padding: 6px;
 }
 
 .exposure-grid.visible {
@@ -281,26 +281,31 @@ main {
 .exposure-card {
   background: var(--card-bg);
   padding: 20px;
-  border-radius: var(--radius-md);
+  border-radius: 16px;
   box-shadow: var(--shadow-sm);
-  text-align: center;
+  text-align: left;
+  height: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
   animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
   opacity: 0;
 }
 
 .exp-term {
-  font-size: clamp(18px, 2vw, 22px);
+  font-size: clamp(18px, 2.4vw, 22px);
   font-weight: 700;
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   overflow-wrap: anywhere;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .exp-def {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
   overflow-wrap: anywhere;
   line-height: 1.35;
 }
@@ -602,6 +607,16 @@ main {
   margin-top: 18px;
 }
 
+.exposure-controls,
+.quiz-controls {
+  flex-wrap: nowrap;
+}
+
+.exposure-controls .btn,
+.quiz-controls .btn {
+  white-space: nowrap;
+}
+
 .info-btn {
   position: absolute;
   bottom: 30px;
@@ -751,6 +766,24 @@ main {
 
   .btn-next {
     width: 100%;
+  }
+
+  .exposure-controls,
+  .quiz-controls {
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+  }
+
+  .exposure-controls .btn-next,
+  .quiz-controls .btn-next {
+    width: auto;
+  }
+
+  .exposure-controls .btn,
+  .quiz-controls .btn {
+    flex: 0 0 auto;
   }
 
   .btn-quiet {
