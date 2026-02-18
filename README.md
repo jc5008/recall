@@ -1,49 +1,82 @@
-# Focus | Mastery Training Flashcards
+# Focus | Mastery Training (Next.js)
 
-A digital self-training system designed for rapid mastery of two-part concepts (Symbol/Meaning). This application uses a "Forced Recall" loop to ensure dependencies are built in both directions, presented in an Apple-inspired, clean interface.
+Focus is a Next.js flashcard trainer with multi-mode study:
 
-## 🚀 Features
+1. Reference
+2. Exposure
+3. Grid
+4. Recall
+5. Loop
+6. Quiz
 
-### 1. The Learning Loop
-The system guides the user through three distinct phases to ensure mastery:
-* **Exposure:** A low-stress, grid-based view of 8 items. The goal is simple familiarization.
-* **Blind Recall:** Active testing. The answer is hidden. You must produce the answer before revealing it.
-* **Missed-Only Loop:** The system tracks what you miss. You cannot proceed to the next batch until you have cleared your "Missed" stack.
+It now supports multiple decks from a folder of deck files.
 
-### 2. Forced Two-Way Dependency
-Unlike standard flashcards, this system automatically generates two cards for every data point:
-1.  Symbol → Full Meaning
-2.  Full Meaning → Symbol
+## Run Locally
 
-This prevents "recognition-only" learning and builds true automaticity.
+1. `npm install`
+2. `npm run dev`
+3. Open `http://localhost:3000`
 
-### 3. Intelligent Batching
-You can dump hundreds of terms into the content file. The system automatically slices them into **Micro-Sets of 8**. This prevents cognitive overload and fits the ideal capacity of working memory.
+## Build
 
-### 4. Input Methods
-* **Mouse/Touch:** Click to flip, click buttons to grade.
-* **Keyboard:** * `SPACE` or `ENTER`: Flip Card
-    * `LEFT ARROW`: Missed
-    * `RIGHT ARROW`: I knew it
-* **Gestures:**
-    * Swipe Left: Missed
-    * Swipe Right: I knew it
+- `npm run build`
+- `npm start`
 
-## 🛠 Setup & Usage
+## Decks Folder
 
-### 1. Installation
-No server or installation is required.
-1.  Download `index.html` and `content.js`.
-2.  Place them in the same folder.
-3.  Open `index.html` in any modern web browser (Chrome, Safari, Edge).
+Decks live in `decks/` as JavaScript files that default-export an array.
 
-### 2. Editing Content
-Open `content.js` in a text editor (Notepad, TextEdit, VS Code).
-Add your terms to the `flashcardData` array in this format:
+- File name (without `.js`) is the deck name in the dropdown.
+- Example: `decks/greek_letters.js` appears as `Greek Letters`.
+- Register each new deck in `decks/index.js` using the same key as the filename.
 
-```javascript
+### Deck File Format
+
+Each card now includes:
+
+- `cardNumber`
+- `question`
+- `answer`
+- `distractor1`
+- `distractor2`
+- `distractor3`
+
+```js
 const flashcardData = [
-    { term: "Your Term", def: "Your Definition" },
-    { term: "NaCl", def: "Sodium Chloride" },
-    // Add as many as you want...
+  {
+    cardNumber: 1,
+    question: "H",
+    answer: "Hydrogen",
+    distractor1: "Helium",
+    distractor2: "Lithium",
+    distractor3: "Beryllium",
+  },
 ];
+
+export default flashcardData;
+```
+
+## Home Screen Flow
+
+- App opens to Home with a deck dropdown.
+- User selects a deck and clicks Start Deck.
+- Clicking Home during study returns to deck selection and resets progress.
+- Search filters cards by any field (`cardNumber`, `question`, `answer`, distractors).
+- Shuffle randomizes card order across all modes.
+
+## Project Structure
+
+```text
+.
+├── app/
+│   ├── FlashcardAppClient.jsx
+│   ├── globals.css
+│   ├── layout.jsx
+│   └── page.jsx
+├── decks/
+│   ├── elements.js
+│   ├── greek_letters.js
+│   └── index.js
+├── next.config.mjs
+└── package.json
+```
