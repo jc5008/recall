@@ -48,14 +48,25 @@ Enable admins to generate reports on employee progress and identify problem area
     - `POST /api/admin/login`
     - `POST /api/admin/logout`
     - `GET /api/admin/session`
+  - Admin role management added:
+    - `POST /api/admin/users/promote`
+    - `scripts/promote-admin.js` + `npm run admin:promote -- <email>`
   - User auth endpoints and page added:
     - `POST /api/auth/register`
     - `POST /api/auth/login`
     - `POST /api/auth/logout`
     - `GET /api/auth/session`
     - `app/auth/page.jsx`
+  - Anonymous password-only login added via `.env.local`:
+    - set `ANONYMOUS_PASSWORD`
+    - `/auth` now supports an Anonymous tab (password only, no username/email)
+    - anonymous sessions keep telemetry anonymous (`user_id` remains null)
   - Telemetry now binds `user_id` from server-verified user session cookie.
   - Admin report page added: `app/admin/reports/page.jsx`
+  - Mode-specific admin report suite added with button-driven UI:
+    - `GET /api/admin/reports/mode/[mode]` for `reference`, `grid`, `quiz`, `exposure`, `recall`, `loop`
+    - each mode now exposes the metrics described in the instrumentation matrix
+    - `/admin/reports` now includes one-click mode report buttons and dynamic section tables
   - Automated tests added:
     - telemetry payload validation
     - report query builders

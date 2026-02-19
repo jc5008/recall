@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "node scripts/migrate.js",
+    "admin:promote": "node scripts/promote-admin.js",
     "test": "node --test"
   },
   "dependencies": {

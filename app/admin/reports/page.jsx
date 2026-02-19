@@ -2,18 +2,28 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+const MODE_OPTIONS = [
+  { id: "reference", label: "Reference Reports" },
+  { id: "grid", label: "Grid Reports" },
+  { id: "quiz", label: "Quiz Reports" },
+  { id: "exposure", label: "Exposure Reports" },
+  { id: "recall", label: "Recall Reports" },
+  { id: "loop", label: "Loop Reports" },
+];
+
 export default function AdminReportsPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [deckName, setDeckName] = useState("");
+  const [activeMode, setActiveMode] = useState("reference");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [difficultCards, setDifficultCards] = useState([]);
-  const [employeeProgress, setEmployeeProgress] = useState([]);
+  const [reportSections, setReportSections] = useState([]);
 
   const hasData = useMemo(
-    () => difficultCards.length > 0 || employeeProgress.length > 0,
-    [difficultCards.length, employeeProgress.length],
+    () =>
+      reportSections.some((section) => Array.isArray(section.rows) && section.rows.length > 0),
+    [reportSections],
   );
 
   useEffect(() => {
@@ -53,7 +63,7 @@ export default function AdminReportsPage() {
       }
       setAuthenticated(true);
       setPassword("");
-      await loadReports();
+      await loadModeReport("reference");
     } catch (e) {
       setError(e.message || "Unable to log in.");
     } finally {
@@ -64,50 +74,45 @@ export default function AdminReportsPage() {
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
     setAuthenticated(false);
-    setDifficultCards([]);
-    setEmployeeProgress([]);
+    setReportSections([]);
   }
 
-  async function loadReports() {
+  async function loadModeReport(mode) {
     setLoading(true);
     setError("");
+    setActiveMode(mode);
 
     try {
       const deckParam = deckName.trim() ? `&deck=${encodeURIComponent(deckName.trim())}` : "";
-      const [difficultRes, progressRes] = await Promise.all([
-        fetch(`/api/admin/reports/top-difficult-cards?limit=25&minAttempts=2${deckParam}`, {
-          cache: "no-store",
-        }),
-        fetch(`/api/admin/reports/employee-progress?limit=50${deckParam}`, {
-          cache: "no-store",
-        }),
-      ]);
+      const response = await fetch(`/api/admin/reports/mode/${mode}?limit=25${deckParam}`, {
+        cache: "no-store",
+      });
 
-      if (difficultRes.status === 401 || progressRes.status === 401) {
+      if (response.status === 401) {
         setAuthenticated(false);
         throw new Error("Not authenticated. Log in to continue.");
       }
-      if (!difficultRes.ok || !progressRes.ok) {
+      if (!response.ok) {
         throw new Error("Unable to load reports.");
       }
 
-      const difficultJson = await difficultRes.json();
-      const progressJson = await progressRes.json();
-
-      setDifficultCards(Array.isArray(difficultJson.data) ? difficultJson.data : []);
-      setEmployeeProgress(Array.isArray(progressJson.data) ? progressJson.data : []);
+      const json = await response.json();
+      setReportSections(Array.isArray(json.sections) ? json.sections : []);
     } catch (e) {
       setError(e.message || "Failed to load reports.");
-      setDifficultCards([]);
-      setEmployeeProgress([]);
+      setReportSections([]);
     } finally {
       setLoading(false);
     }
   }
 
+  async function loadActiveMode() {
+    await loadModeReport(activeMode);
+  }
+
   useEffect(() => {
     if (authenticated) {
-      loadReports();
+      loadModeReport("reference");
     }
     // Intentionally trigger when auth state flips true.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -134,15 +139,15 @@ export default function AdminReportsPage() {
           </button>
         </div>
       ) : (
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "16px" }}>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
           <input
             value={deckName}
             onChange={(e) => setDeckName(e.target.value)}
             placeholder="Deck filter (optional)"
             style={{ minWidth: "220px", padding: "10px" }}
           />
-          <button onClick={loadReports} disabled={loading} style={{ padding: "10px 14px" }}>
-            {loading ? "Loading..." : "Load Reports"}
+          <button onClick={loadActiveMode} disabled={loading} style={{ padding: "10px 14px" }}>
+            {loading ? "Loading..." : "Reload Active Report"}
           </button>
           <button onClick={logout} disabled={loading} style={{ padding: "10px 14px" }}>
             Sign Out
@@ -152,69 +157,80 @@ export default function AdminReportsPage() {
 
       {error && <p style={{ color: "#b00020", margin: "0 0 16px" }}>{error}</p>}
 
+      {authenticated && (
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "16px" }}>
+          {MODE_OPTIONS.map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => loadModeReport(mode.id)}
+              disabled={loading}
+              style={{
+                padding: "10px 12px",
+                fontWeight: mode.id === activeMode ? 700 : 500,
+                border: mode.id === activeMode ? "2px solid #222" : "1px solid #bbb",
+                background: mode.id === activeMode ? "#f5f5f5" : "#fff",
+              }}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {!hasData && !loading && !error && (
         <p style={{ color: "#666", margin: 0 }}>No data loaded yet.</p>
       )}
 
-      {difficultCards.length > 0 && (
-        <>
-          <h2 style={{ marginTop: "8px" }}>Top Difficult Cards</h2>
-          <div style={{ overflowX: "auto", marginBottom: "18px" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>Deck</th>
-                  <th style={thStyle}>Card</th>
-                  <th style={thStyle}>Attempts</th>
-                  <th style={thStyle}>Correct</th>
-                  <th style={thStyle}>Accuracy %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {difficultCards.map((row) => (
-                  <tr key={`${row.deck_name}-${row.card_id}`}>
-                    <td style={tdStyle}>{row.deck_name}</td>
-                    <td style={tdStyle}>{row.card_id}</td>
-                    <td style={tdStyle}>{row.attempts}</td>
-                    <td style={tdStyle}>{row.correct_count}</td>
-                    <td style={tdStyle}>{row.accuracy_pct}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {employeeProgress.length > 0 && (
-        <>
-          <h2>Employee Progress</h2>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse", width: "100%" }}>
-              <thead>
-                <tr>
-                  <th style={thStyle}>User</th>
-                  <th style={thStyle}>Deck</th>
-                  <th style={thStyle}>Mastered Cards</th>
-                  <th style={thStyle}>Last Mastered</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employeeProgress.map((row, index) => (
-                  <tr key={`${row.user_id}-${row.deck_name}-${index}`}>
-                    <td style={tdStyle}>{row.user_id}</td>
-                    <td style={tdStyle}>{row.deck_name}</td>
-                    <td style={tdStyle}>{row.mastered_cards}</td>
-                    <td style={tdStyle}>{row.last_mastered_at}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+      {reportSections.map((section) => (
+        <ReportSection key={section.key} section={section} />
+      ))}
     </main>
   );
+}
+
+function ReportSection({ section }) {
+  const rows = Array.isArray(section.rows) ? section.rows : [];
+  const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+
+  return (
+    <>
+      <h2 style={{ marginTop: "10px" }}>{section.title}</h2>
+      {rows.length === 0 ? (
+        <p style={{ color: "#666", marginTop: 0 }}>No rows found for current filters.</p>
+      ) : (
+        <div style={{ overflowX: "auto", marginBottom: "18px" }}>
+          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead>
+              <tr>
+                {columns.map((column) => (
+                  <th key={column} style={thStyle}>
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={`${section.key}-${index}`}>
+                  {columns.map((column) => (
+                    <td key={`${section.key}-${index}-${column}`} style={tdStyle}>
+                      {formatCellValue(row[column])}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+function formatCellValue(value) {
+  if (value == null) return "-";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 const thStyle = {

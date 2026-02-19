@@ -125,6 +125,9 @@ export default function FlashcardAppClient({ decks }) {
   const [quizChecked, setQuizChecked] = useState(false);
 
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
+  const [inactivityWarning, setInactivityWarning] = useState(false);
+  const [sessionEndedModal, setSessionEndedModal] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
   const sessionIdRef = useRef("");
   const fingerprintIdRef = useRef("");
@@ -138,6 +141,8 @@ export default function FlashcardAppClient({ decks }) {
   const recallLoggedIdsRef = useRef(new Set());
   const loopAttemptCountsRef = useRef(new Map());
   const loopMetricsSentRef = useRef(false);
+  const lastActivityAtRef = useRef(Date.now());
+  const inactivityWarningShownAtRef = useRef(0);
 
   const isHomeScreen = !activeDeckName;
   const activeDeckData = useMemo(
@@ -603,11 +608,19 @@ export default function FlashcardAppClient({ decks }) {
       try {
         const response = await fetch("/api/auth/session", { cache: "no-store" });
         const json = await response.json();
-        if (!cancelled && json?.authenticated && json?.user) {
+        if (cancelled) return;
+        setSessionLoaded(true);
+        if (json?.authenticated && json?.user) {
           setUserSession(json.user);
+          lastActivityAtRef.current = Date.now();
+        } else {
+          window.location.href = "/auth";
         }
       } catch {
-        // ignore
+        if (!cancelled) {
+          setSessionLoaded(true);
+          window.location.href = "/auth";
+        }
       }
     }
     loadUserSession();
@@ -772,6 +785,91 @@ export default function FlashcardAppClient({ decks }) {
     return () => mediaQuery.removeEventListener("change", onChange);
   }, []);
 
+  // Inactivity: 10 min idle → warning "Session will end in 5 minutes"; 5 min more → end session
+  const INACTIVITY_WARN_MS = 10 * 60 * 1000;
+  const INACTIVITY_END_MS = 5 * 60 * 1000;
+
+  function bumpActivity() {
+    lastActivityAtRef.current = Date.now();
+    if (inactivityWarning) {
+      setInactivityWarning(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!userSession) return;
+
+    const intervalId = setInterval(() => {
+      const now = Date.now();
+      if (inactivityWarning) {
+        if (now - inactivityWarningShownAtRef.current >= INACTIVITY_END_MS) {
+          clearInterval(intervalId);
+          setInactivityWarning(false);
+          logoutUser().finally(() => {
+            setSessionEndedModal(true);
+          });
+        }
+      } else {
+        if (now - lastActivityAtRef.current >= INACTIVITY_WARN_MS) {
+          inactivityWarningShownAtRef.current = now;
+          setInactivityWarning(true);
+        }
+      }
+    }, 30 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [userSession, inactivityWarning]);
+
+  useEffect(() => {
+    if (!userSession) return;
+
+    const events = ["click", "keydown", "mousemove", "touchstart", "scroll"];
+    const onActivity = () => bumpActivity();
+
+    events.forEach((ev) => window.addEventListener(ev, onActivity));
+    return () => events.forEach((ev) => window.removeEventListener(ev, onActivity));
+  }, [userSession]);
+
+  if (!sessionLoaded) {
+    return (
+      <main style={{ padding: "24px", textAlign: "center" }}>
+        <p style={{ color: "#666" }}>Loading…</p>
+      </main>
+    );
+  }
+
+  if (!userSession && !sessionEndedModal) {
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth";
+    }
+    return (
+      <main style={{ padding: "24px", textAlign: "center" }}>
+        <p style={{ color: "#666" }}>Redirecting…</p>
+      </main>
+    );
+  }
+
+  if (!userSession && sessionEndedModal) {
+    return (
+      <div className="modal-overlay open">
+        <div className="modal-content">
+          <p className="modal-p" style={{ marginBottom: "16px" }}>
+            Your session was ended due to no activity.
+          </p>
+          <button
+            className="btn btn-next"
+            onClick={() => {
+              setSessionEndedModal(false);
+              window.location.href = "/auth";
+            }}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!deckNames.length) {
     return (
       <main>
@@ -909,20 +1007,14 @@ export default function FlashcardAppClient({ decks }) {
                 flexWrap: "wrap",
               }}
             >
-              {userSession ? (
-                <>
-                  <span style={{ color: "#666", fontSize: "13px" }}>
-                    Signed in as {userSession.email}
-                  </span>
-                  <button className="btn btn-quiet" onClick={logoutUser}>
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <Link href="/auth" style={{ color: "#0071e3", fontSize: "14px" }}>
-                  Sign in or create account
-                </Link>
-              )}
+              {userSession?.email ? (
+                <span style={{ color: "#666", fontSize: "13px" }}>
+                  Signed in as {userSession.email}
+                </span>
+              ) : null}
+              <button className="btn btn-quiet" onClick={logoutUser}>
+                Sign Out
+              </button>
             </div>
             <label className="home-label" htmlFor="deckSelect">
               Deck
@@ -1314,6 +1406,24 @@ export default function FlashcardAppClient({ decks }) {
           </div>
         </>
       )}
+
+      {/* Inactivity warning: session will end in 5 minutes */}
+      <div className={`modal-overlay ${inactivityWarning ? "open" : ""}`}>
+        <div className="modal-content">
+          <p className="modal-p" style={{ marginBottom: "16px" }}>
+            No activity detected. Your session will end in 5 minutes.
+          </p>
+          <button
+            className="btn btn-next"
+            onClick={() => {
+              bumpActivity();
+            }}
+          >
+            Stay signed in
+          </button>
+        </div>
+      </div>
+
     </>
   );
 }

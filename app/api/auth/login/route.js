@@ -22,8 +22,43 @@ export async function POST(request) {
       );
     }
 
-    if (!email || !password) {
-      return NextResponse.json({ ok: false, error: "Email and password required." }, { status: 400 });
+    if (!password) {
+      return NextResponse.json({ ok: false, error: "Password required." }, { status: 400 });
+    }
+
+    // Anonymous: no username, password must match ANONYMOUS_PASSWORD
+    if (!email) {
+      const configuredPassword = String(process.env.ANONYMOUS_PASSWORD ?? "");
+      if (!configuredPassword) {
+        return NextResponse.json(
+          { ok: false, error: "ANONYMOUS_PASSWORD is not configured." },
+          { status: 500 },
+        );
+      }
+      if (password !== configuredPassword) {
+        return NextResponse.json({ ok: false, error: "Invalid credentials." }, { status: 401 });
+      }
+
+      const token = createUserSessionToken({
+        userId: null,
+        email: null,
+        role: "anonymous",
+      });
+
+      const response = NextResponse.json({
+        ok: true,
+        user: { userId: null, email: null, role: "anonymous", isAnonymous: true },
+      });
+      response.cookies.set({
+        name: getUserSessionCookieName(),
+        value: token,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: getUserSessionMaxAgeSeconds(),
+      });
+      return response;
     }
 
     const result = await query(

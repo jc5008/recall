@@ -11,10 +11,11 @@ export async function GET(request) {
       return NextResponse.json({ ok: true, authenticated: false, user: null });
     }
     const { userId, email, role } = result.payload;
+    const isAnonymous = role === "anonymous" && !userId;
     return NextResponse.json({
       ok: true,
       authenticated: true,
-      user: { userId, email, role },
+      user: { userId, email, role, isAnonymous },
     });
   } catch {
     return NextResponse.json({ ok: true, authenticated: false, user: null });

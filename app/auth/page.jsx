@@ -15,9 +15,16 @@ export default function AuthPage() {
   async function submit() {
     setError("");
     setMessage("");
-    if (!email.trim() || !password) {
-      setError("Email and password are required.");
-      return;
+    if (mode === "login") {
+      if (!password) {
+        setError("Password is required.");
+        return;
+      }
+    } else {
+      if (!email.trim() || !password) {
+        setError("Email and password are required.");
+        return;
+      }
     }
     if (mode === "register" && password.length < 8) {
       setError("Password must be at least 8 characters.");
@@ -65,10 +72,12 @@ export default function AuthPage() {
           padding: "24px",
         }}
       >
-        <h1 style={{ margin: "0 0 10px" }}>{mode === "login" ? "Sign In" : "Create Account"}</h1>
+        <h1 style={{ margin: "0 0 10px" }}>
+          {mode === "login" ? "Sign In" : "Create Account"}
+        </h1>
         <p style={{ margin: "0 0 16px", color: "#666" }}>
           {mode === "login"
-            ? "Sign in to link your training telemetry to your account."
+            ? "Sign in with your email and password, or leave email blank and use the shared password."
             : "Create an account for tracked progress across sessions."}
         </p>
 
