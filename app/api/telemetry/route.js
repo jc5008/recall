@@ -14,6 +14,18 @@ function normalizeString(value) {
   return String(value);
 }
 
+/** Get client IP from request (trusted proxies set x-forwarded-for / x-real-ip). */
+function getClientIp(request) {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+  return null;
+}
+
 async function ensureSession(client, event) {
   await client.query(
     `
@@ -58,6 +70,7 @@ async function insertEvent(client, event, context) {
   const normalizedEvent = {
     ...event,
     user_id: context?.userId ?? normalizeString(event.user_id),
+    ip_address: context?.clientIp ?? normalizeString(event.ip_address),
   };
 
   await ensureSession(client, normalizedEvent);
@@ -329,6 +342,7 @@ export async function POST(request) {
     const userSession = verifyUserSessionToken(token);
     const context = {
       userId: userSession.ok ? userSession.payload.userId : null,
+      clientIp: getClientIp(request),
     };
 
     if (!events.length) {
